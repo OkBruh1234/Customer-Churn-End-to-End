@@ -1,13 +1,13 @@
-import os
-
 import pandas as pd
 import requests
 import streamlit as st
 
+from runtime_config import get_api_base_url, get_api_base_url_issue
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+API_BASE_URL = get_api_base_url()
+API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
 USER_HISTORY_LIMIT = 50
 ADMIN_SUMMARY_KEY = "admin_summary_cache"
 ADMIN_USERS_KEY = "admin_users_cache"
@@ -23,9 +23,12 @@ def get_http_session():
 
 
 def build_error_message(error):
+    if API_BASE_URL_ISSUE:
+        return API_BASE_URL_ISSUE
+
     default_message = (
-        "Could not reach the backend. Start FastAPI with "
-        "uvicorn backend.main:app --reload and try again."
+        f"Could not reach the backend at {API_BASE_URL}. "
+        "Make sure your public FastAPI URL is set in API_BASE_URL."
     )
     response = getattr(error, "response", None)
     if response is None:
@@ -211,6 +214,8 @@ with st.sidebar:
         [("API Base URL", API_BASE_URL)],
         note="Refresh only when you want to pull the newest backend state.",
     )
+    if API_BASE_URL_ISSUE:
+        st.warning(API_BASE_URL_ISSUE)
     if st.button("Refresh Dashboard"):
         invalidate_admin_cache()
         force_refresh = True

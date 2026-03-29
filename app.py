@@ -1,14 +1,14 @@
-import os
-
 import pandas as pd
 import requests
 import streamlit as st
 
 from backend.validation import validate_user_name
+from runtime_config import get_api_base_url, get_api_base_url_issue
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+API_BASE_URL = get_api_base_url()
+API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
 USER_SESSION_KEY = "registered_user"
 LAST_PREDICTION_SESSION_KEY = "last_prediction"
 PREDICTION_HISTORY_LIMIT = 10
@@ -22,9 +22,12 @@ def get_http_session():
 
 
 def build_error_message(error):
+    if API_BASE_URL_ISSUE:
+        return API_BASE_URL_ISSUE
+
     default_message = (
-        "Could not reach the backend. Start FastAPI with "
-        "uvicorn backend.main:app --reload and try again."
+        f"Could not reach the backend at {API_BASE_URL}. "
+        "Make sure your public FastAPI URL is set in API_BASE_URL."
     )
     response = getattr(error, "response", None)
     if response is None:
@@ -236,6 +239,8 @@ with st.sidebar:
             else "Register a user first to unlock the prediction workflow."
         ),
     )
+    if API_BASE_URL_ISSUE:
+        st.warning(API_BASE_URL_ISSUE)
     if registered_user:
         if st.button("Switch User"):
             reset_user_session()
