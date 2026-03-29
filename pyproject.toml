@@ -1,0 +1,21 @@
+[project]
+name = "customer-churn-end-to-end"
+version = "0.1.0"
+description = "Customer churn prediction app with Streamlit, FastAPI, and SQLAlchemy"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi",
+    "joblib",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "requests",
+    "scikit-learn",
+    "seaborn",
+    "shap",
+    "sqlalchemy",
+    "streamlit",
+    "uvicorn",
+    "xgboost",
+]

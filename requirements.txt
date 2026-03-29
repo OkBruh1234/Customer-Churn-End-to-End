@@ -7,3 +7,7 @@ xgboost
 joblib
 numpy
 shap
+fastapi
+uvicorn
+sqlalchemy
+requests

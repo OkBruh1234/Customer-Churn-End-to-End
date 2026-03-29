@@ -1,569 +1,443 @@
-# # import streamlit as st
-# # import pandas as pd
-# # import joblib
+import os
 
-# # # Load model
-# # model = joblib.load("churn_model.pkl")
-
-# # st.title("📊 Customer Churn Prediction System")
-
-# # st.write("Provide full customer details for prediction")
-
-# # # ---------------- BASIC INFO ---------------- #
-
-# # gender = st.selectbox("Gender", ["Male", "Female"])
-
-# # senior = st.selectbox("Senior Citizen", [0, 1])
-
-# # partner = st.selectbox("Has Partner?", ["Yes", "No"])
-
-# # dependents = st.selectbox("Has Dependents?", ["Yes", "No"])
-
-# # # ---------------- SERVICES ---------------- #
-
-# # phone = st.selectbox("Phone Service", ["Yes", "No"])
-
-# # multiple_lines = st.selectbox(
-# #     "Multiple Lines",
-# #     ["Yes", "No", "No phone service"]
-# # )
-
-# # internet = st.selectbox(
-# #     "Internet Service",
-# #     ["DSL", "Fiber optic", "No"]
-# # )
-
-# # phone = st.selectbox("Phone Service", ["Yes", "No"])
-
-# # if phone == "No":
-# #     multiple_lines = "No phone service"
-# #     st.info("No Phone Service → MultipleLines auto-set")
-
-# # else:
-# #     multiple_lines = st.selectbox(
-# #         "Multiple Lines",
-# #         ["Yes", "No"]
-# #     )
-
-# # if internet == "No":
-# #   online_security = "No internet service"
-# #   online_backup = "No internet service" 
-# #   device_protection = "No internet service"
-# #   tech_support = "No internet service"
-# #   streaming_tv = "No internet service"
-# #   streaming_movies = "No internet service"
-  
-# #   st.info("No internet - All internet-related services set to 'No internet service'")
-  
-# # else:
-
-# #   online_security = st.selectbox(
-# #     "Online Security",
-# #     ["Yes", "No", "No internet service"]
-# #   )
-
-# # online_backup = st.selectbox(
-# #     "Online Backup",
-# #     ["Yes", "No", "No internet service"]
-# # )
-
-# # device_protection = st.selectbox(
-# #     "Device Protection",
-# #     ["Yes", "No", "No internet service"]
-# # )
-
-# # tech_support = st.selectbox(
-# #     "Tech Support",
-# #     ["Yes", "No", "No internet service"]
-# # )
-
-# # streaming_tv = st.selectbox(
-# #     "Streaming TV",
-# #     ["Yes", "No", "No internet service"]
-# # )
-
-# # streaming_movies = st.selectbox(
-# #     "Streaming Movies",
-# #     ["Yes", "No", "No internet service"]
-# # )
-
-# # # ---------------- BILLING ---------------- #
-
-# # contract = st.selectbox(
-# #     "Contract Type",
-# #     ["Month-to-month", "One year", "Two year"]
-# # )
-
-# # paperless = st.selectbox("Paperless Billing", ["Yes", "No"])
-
-# # payment = st.selectbox(
-# #     "Payment Method",
-# #     [
-# #         "Electronic check",
-# #         "Mailed check",
-# #         "Bank transfer (automatic)",
-# #         "Credit card (automatic)"
-# #     ]
-# # )
-
-# # monthly = st.number_input("Monthly Charges", 0.0, 200.0, 70.0)
-
-# # tenure = st.slider("Tenure (months)", 0, 72, 12)
-
-# # # ---------------- FEATURE ENGINEERING ---------------- #
-
-# # # TotalCharges (important!)
-# # total_charges = monthly * tenure
-
-# # # tenure bucket
-# # if tenure <= 12:
-# #     tenure_bucket = "0-1 year"
-# # elif tenure <= 24:
-# #     tenure_bucket = "1-2 years"
-# # elif tenure <= 48:
-# #     tenure_bucket = "2-4 years"
-# # else:
-# #     tenure_bucket = "4+ years"
-
-# # # service count
-# # services = [
-# #     online_security,
-# #     online_backup,
-# #     device_protection,
-# #     tech_support,
-# #     streaming_tv,
-# #     streaming_movies
-# # ]
-
-# # service_count = sum([1 for s in services if s == "Yes"])
-
-# # # charges per tenure
-# # charges_per_tenure = monthly / (tenure + 1)
-
-# # # ---------------- FINAL INPUT ---------------- #
-
-# # input_df = pd.DataFrame({
-# #     "gender": [gender],
-# #     "SeniorCitizen": [senior],
-# #     "Partner": [partner],
-# #     "Dependents": [dependents],
-# #     "tenure": [tenure],
-# #     "PhoneService": [phone],
-# #     "MultipleLines": [multiple_lines],
-# #     "InternetService": [internet],
-# #     "OnlineSecurity": [online_security],
-# #     "OnlineBackup": [online_backup],
-# #     "DeviceProtection": [device_protection],
-# #     "TechSupport": [tech_support],
-# #     "StreamingTV": [streaming_tv],
-# #     "StreamingMovies": [streaming_movies],
-# #     "Contract": [contract],
-# #     "PaperlessBilling": [paperless],
-# #     "PaymentMethod": [payment],
-# #     "MonthlyCharges": [monthly],
-# #     "TotalCharges": [total_charges],
-# #     "tenure_bucket": [tenure_bucket],
-# #     "service_count": [service_count],
-# #     "charges_per_tenure": [charges_per_tenure]
-# # })
-
-# # # ---------------- PREDICTION ---------------- #
-
-# # if st.button("Predict Churn"):
-
-# #     prob = model.predict_proba(input_df)[0][1]
-
-# #     st.subheader(f"Churn Probability: {prob:.2f}")
-
-# #     if prob < 0.30:
-# #         st.success("🟢 Low Risk")
-# #     elif prob < 0.60:
-# #         st.warning("🟡 Medium Risk")
-# #     else:
-# #         st.error("🔴 High Risk")
-        
-# # st.write("### Prediction Details")
-# # st.write(input_df)
-
-# # confidence = abs(prob - 0.5) * 2
-# # st.write(f"Model Confidence: {confidence:.2f}")
-
-# # if prob > 0.6:
-# #     st.write("⚠️ High risk due to low tenure / contract type / service usage")
-
-# import streamlit as st
-# import pandas as pd
-# import joblib
-
-# model = joblib.load("churn_model.pkl")
-
-# st.title("📊 Customer Churn Prediction System")
-
-# # ---------------- BASIC INFO ---------------- #
-
-# gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
-
-# senior = st.selectbox("Senior Citizen", [0, 1], key="senior")
-
-# partner = st.selectbox("Partner", ["Yes", "No"], key="partner")
-
-# dependents = st.selectbox("Dependents", ["Yes", "No"], key="dependents")
-
-# # ---------------- PHONE ---------------- #
-
-# phone = st.selectbox("Phone Service", ["Yes", "No"], key="phone")
-
-# if phone == "No":
-#     multiple_lines = "No phone service"
-#     st.info("No phone service → MultipleLines auto-set")
-# else:
-#     multiple_lines = st.selectbox(
-#         "Multiple Lines",
-#         ["Yes", "No"],
-#         key="multiple_lines"
-#     )
-
-# # ---------------- INTERNET ---------------- #
-
-# internet = st.selectbox(
-#     "Internet Service",
-#     ["DSL", "Fiber optic", "No"],
-#     key="internet"
-# )
-
-# if internet == "No":
-
-#     st.info("No internet → all dependent services auto-set")
-
-#     online_security = "No internet service"
-#     online_backup = "No internet service"
-#     device_protection = "No internet service"
-#     tech_support = "No internet service"
-#     streaming_tv = "No internet service"
-#     streaming_movies = "No internet service"
-
-# else:
-
-#     online_security = st.selectbox(
-#         "Online Security",
-#         ["Yes", "No"],
-#         key="online_security"
-#     )
-
-#     online_backup = st.selectbox(
-#         "Online Backup",
-#         ["Yes", "No"],
-#         key="online_backup"
-#     )
-
-#     device_protection = st.selectbox(
-#         "Device Protection",
-#         ["Yes", "No"],
-#         key="device_protection"
-#     )
-
-#     tech_support = st.selectbox(
-#         "Tech Support",
-#         ["Yes", "No"],
-#         key="tech_support"
-#     )
-
-#     streaming_tv = st.selectbox(
-#         "Streaming TV",
-#         ["Yes", "No"],
-#         key="streaming_tv"
-#     )
-
-#     streaming_movies = st.selectbox(
-#         "Streaming Movies",
-#         ["Yes", "No"],
-#         key="streaming_movies"
-#     )
-
-# # ---------------- BILLING ---------------- #
-
-# contract = st.selectbox(
-#     "Contract",
-#     ["Month-to-month", "One year", "Two year"],
-#     key="contract"
-# )
-
-# paperless = st.selectbox(
-#     "Paperless Billing",
-#     ["Yes", "No"],
-#     key="paperless"
-# )
-
-# payment = st.selectbox(
-#     "Payment Method",
-#     [
-#         "Electronic check",
-#         "Mailed check",
-#         "Bank transfer (automatic)",
-#         "Credit card (automatic)"
-#     ],
-#     key="payment"
-# )
-
-# monthly = st.number_input(
-#     "Monthly Charges",
-#     0.0, 200.0, 70.0,
-#     key="monthly"
-# )
-
-# tenure = st.slider(
-#     "Tenure (months)",
-#     0, 72, 12,
-#     key="tenure"
-# )
-
-# # ---------------- FEATURE ENGINEERING ---------------- #
-
-# total_charges = monthly * tenure
-
-# if tenure <= 12:
-#     tenure_bucket = "0-1 year"
-# elif tenure <= 24:
-#     tenure_bucket = "1-2 years"
-# elif tenure <= 48:
-#     tenure_bucket = "2-4 years"
-# else:
-#     tenure_bucket = "4+ years"
-
-# services = [
-#     online_security,
-#     online_backup,
-#     device_protection,
-#     tech_support,
-#     streaming_tv,
-#     streaming_movies
-# ]
-
-# service_count = sum([1 for s in services if s == "Yes"])
-
-# charges_per_tenure = monthly / (tenure + 1)
-
-# # ---------------- INPUT DF ---------------- #
-
-# input_df = pd.DataFrame({
-#     "gender": [gender],
-#     "SeniorCitizen": [senior],
-#     "Partner": [partner],
-#     "Dependents": [dependents],
-#     "tenure": [tenure],
-#     "PhoneService": [phone],
-#     "MultipleLines": [multiple_lines],
-#     "InternetService": [internet],
-#     "OnlineSecurity": [online_security],
-#     "OnlineBackup": [online_backup],
-#     "DeviceProtection": [device_protection],
-#     "TechSupport": [tech_support],
-#     "StreamingTV": [streaming_tv],
-#     "StreamingMovies": [streaming_movies],
-#     "Contract": [contract],
-#     "PaperlessBilling": [paperless],
-#     "PaymentMethod": [payment],
-#     "MonthlyCharges": [monthly],
-#     "TotalCharges": [total_charges],
-#     "tenure_bucket": [tenure_bucket],
-#     "service_count": [service_count],
-#     "charges_per_tenure": [charges_per_tenure]
-# })
-
-# # load feature names once
-# feature_names = input_df.columns
-
-# # ---------------- PREDICTION ---------------- #
-
-# if st.button("Predict Churn"):
-
-#     prob = model.predict_proba(input_df)[0][1]
-
-#     st.subheader(f"Churn Probability: {prob:.2f}")
-
-#     confidence = abs(prob - 0.5) * 2
-#     st.write(f"Model Confidence: {confidence:.2f}")
-
-#     if prob < 0.30:
-#         st.success("🟢 Low Risk")
-#     elif prob < 0.60:
-#         st.warning("🟡 Medium Risk")
-#     else:
-#         st.error("🔴 High Risk")
-
-#     st.write("### Input Summary")
-#     st.write(input_df)
-
-#     # ---------------- SIMPLE EXPLANATION ---------------- #
-
-#     st.write("### 🔍 Why this prediction?")
-
-#     important_factors = []
-
-#     if tenure < 12:
-#         important_factors.append("Low tenure → higher churn risk")
-
-#     if contract == "Month-to-month":
-#         important_factors.append("Month-to-month contract → high churn risk")
-
-#     if internet == "Fiber optic":
-#         important_factors.append("Fiber internet → historically higher churn")
-
-#     if tech_support == "No":
-#         important_factors.append("No tech support → higher churn")
-
-#     if monthly > 80:
-#         important_factors.append("High monthly charges → higher churn")
-
-#     if len(important_factors) == 0:
-#         st.write("No strong churn signals detected")
-
-#     else:
-#         for factor in important_factors:
-#             st.write("•", factor)
-            
-    
-
-#     st.write("### Input Summary")
-#     st.write(input_df)
-
-import streamlit as st
 import pandas as pd
-import joblib
+import requests
+import streamlit as st
 
-model = joblib.load("churn_model.pkl")
+from backend.validation import validate_user_name
+from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
-st.title("📊 Customer Churn Prediction System")
 
-# ---------------- BASIC ---------------- #
-gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
-senior = st.selectbox("Senior Citizen", [0, 1], key="senior")
-partner = st.selectbox("Partner", ["Yes", "No"], key="partner")
-dependents = st.selectbox("Dependents", ["Yes", "No"], key="dependents")
+API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+USER_SESSION_KEY = "registered_user"
+LAST_PREDICTION_SESSION_KEY = "last_prediction"
+PREDICTION_HISTORY_LIMIT = 10
 
-# ---------------- PHONE ---------------- #
-phone = st.selectbox("Phone Service", ["Yes", "No"], key="phone")
 
-if phone == "No":
-    multiple_lines = "No phone service"
-    st.info("No phone → MultipleLines auto-set")
-else:
-    multiple_lines = st.selectbox("Multiple Lines", ["Yes", "No"], key="multiple_lines")
+@st.cache_resource
+def get_http_session():
+    session = requests.Session()
+    session.headers.update({"Content-Type": "application/json"})
+    return session
 
-# ---------------- INTERNET ---------------- #
-internet = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"], key="internet")
 
-if internet == "No":
-    st.info("No internet → all dependent services auto-set")
+def build_error_message(error):
+    default_message = (
+        "Could not reach the backend. Start FastAPI with "
+        "uvicorn backend.main:app --reload and try again."
+    )
+    response = getattr(error, "response", None)
+    if response is None:
+        return default_message
 
-    online_security = "No internet service"
-    online_backup = "No internet service"
-    device_protection = "No internet service"
-    tech_support = "No internet service"
-    streaming_tv = "No internet service"
-    streaming_movies = "No internet service"
+    try:
+        payload = response.json()
+    except ValueError:
+        return default_message
 
-else:
-    online_security = st.selectbox("Online Security", ["Yes", "No"], key="os")
-    online_backup = st.selectbox("Online Backup", ["Yes", "No"], key="ob")
-    device_protection = st.selectbox("Device Protection", ["Yes", "No"], key="dp")
-    tech_support = st.selectbox("Tech Support", ["Yes", "No"], key="ts")
-    streaming_tv = st.selectbox("Streaming TV", ["Yes", "No"], key="stv")
-    streaming_movies = st.selectbox("Streaming Movies", ["Yes", "No"], key="sm")
+    detail = payload.get("detail")
+    if detail:
+        return f"Backend error: {detail}"
 
-# ---------------- BILLING ---------------- #
-contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"], key="contract")
-paperless = st.selectbox("Paperless Billing", ["Yes", "No"], key="paperless")
-payment = st.selectbox(
-    "Payment Method",
-    ["Electronic check", "Mailed check", "Bank transfer (automatic)", "Credit card (automatic)"],
-    key="payment"
-)
+    return default_message
 
-monthly = st.number_input("Monthly Charges", 0.0, 200.0, 70.0, key="monthly")
-tenure = st.slider("Tenure (months)", 0, 72, 12, key="tenure")
 
-# ---------------- FEATURE ENGINEERING ---------------- #
-total_charges = monthly * tenure
+def request_json(method, path, payload=None):
+    request_kwargs = {
+        "method": method,
+        "url": f"{API_BASE_URL}{path}",
+        "timeout": 30,
+    }
+    if payload is not None:
+        request_kwargs["json"] = payload
 
-if tenure <= 12:
-    tenure_bucket = "0-1 year"
-elif tenure <= 24:
-    tenure_bucket = "1-2 years"
-elif tenure <= 48:
-    tenure_bucket = "2-4 years"
-else:
-    tenure_bucket = "4+ years"
+    response = get_http_session().request(**request_kwargs)
+    response.raise_for_status()
+    return response.json()
 
-services = [online_security, online_backup, device_protection, tech_support, streaming_tv, streaming_movies]
-service_count = sum([1 for s in services if s == "Yes"])
 
-charges_per_tenure = monthly / (tenure + 1)
+def get_json(path):
+    return request_json("GET", path)
 
-# ---------------- INPUT ---------------- #
-input_df = pd.DataFrame({
-    "gender": [gender],
-    "SeniorCitizen": [senior],
-    "Partner": [partner],
-    "Dependents": [dependents],
-    "tenure": [tenure],
-    "PhoneService": [phone],
-    "MultipleLines": [multiple_lines],
-    "InternetService": [internet],
-    "OnlineSecurity": [online_security],
-    "OnlineBackup": [online_backup],
-    "DeviceProtection": [device_protection],
-    "TechSupport": [tech_support],
-    "StreamingTV": [streaming_tv],
-    "StreamingMovies": [streaming_movies],
-    "Contract": [contract],
-    "PaperlessBilling": [paperless],
-    "PaymentMethod": [payment],
-    "MonthlyCharges": [monthly],
-    "TotalCharges": [total_charges],
-    "tenure_bucket": [tenure_bucket],
-    "service_count": [service_count],
-    "charges_per_tenure": [charges_per_tenure]
-})
 
-# ---------------- PREDICTION ---------------- #
-if st.button("Predict Churn"):
+def post_json(path, payload):
+    return request_json("POST", path, payload=payload)
 
-    prob = model.predict_proba(input_df)[0][1]
 
-    st.subheader(f"Churn Probability: {prob:.2f}")
-    st.progress(prob)
+def reset_user_session():
+    st.session_state.pop(USER_SESSION_KEY, None)
+    st.session_state.pop(LAST_PREDICTION_SESSION_KEY, None)
 
-    confidence = abs(prob - 0.5) * 2
-    st.write(f"Model Confidence: {confidence:.2f}")
 
-    if prob < 0.30:
-        st.success("🟢 Low Risk")
-    elif prob < 0.60:
-        st.warning("🟡 Medium Risk")
+def build_updated_history(history_data, prediction_result, user_name):
+    new_history_item = {
+        "prediction_id": prediction_result["prediction_id"],
+        "created_at": prediction_result["created_at"],
+        "churn_probability": prediction_result["churn_probability"],
+        "confidence": prediction_result["confidence"],
+        "risk_level": prediction_result["risk_level"],
+        "reasons": prediction_result["reasons"],
+        "model_version": prediction_result["model_version"],
+        "processing_time_ms": prediction_result["processing_time_ms"],
+        "predicted_outcome": prediction_result["predicted_outcome"],
+        "actual_outcome": prediction_result.get("actual_outcome"),
+        "comparison_status": prediction_result.get("comparison_status"),
+        "outcome_recorded_at": prediction_result.get("outcome_recorded_at"),
+    }
+
+    if not history_data:
+        return {
+            "user_id": prediction_result["user_id"],
+            "name": user_name,
+            "total_predictions": 1,
+            "predictions": [new_history_item],
+        }
+
+    existing_predictions = history_data.get("predictions", [])
+    updated_predictions = [new_history_item] + existing_predictions
+
+    return {
+        "user_id": history_data["user_id"],
+        "name": history_data["name"],
+        "total_predictions": history_data.get("total_predictions", 0) + 1,
+        "predictions": updated_predictions[:PREDICTION_HISTORY_LIMIT],
+    }
+
+
+def render_prediction_result(prediction_result):
+    probability = prediction_result["churn_probability"]
+    confidence = prediction_result["confidence"]
+    reasons = prediction_result["reasons"]
+    input_df = pd.DataFrame([prediction_result["input_summary"]])
+
+    st.subheader("Latest Prediction")
+
+    metric_col_1, metric_col_2, metric_col_3, metric_col_4 = st.columns(4)
+    metric_col_1.metric("Churn Probability", f"{probability:.2%}")
+    metric_col_2.metric("Confidence", f"{confidence:.2f}")
+    metric_col_3.metric("Risk Level", prediction_result["risk_level"])
+    metric_col_4.metric("Latency", f"{prediction_result['processing_time_ms']:.0f} ms")
+
+    st.progress(probability)
+    st.caption(
+        f"Prediction ID: {prediction_result['prediction_id']} | "
+        f"User ID: {prediction_result['user_id']} | "
+        f"Model Version: {prediction_result['model_version']}"
+    )
+    st.write(f"Predicted outcome: **{prediction_result['predicted_outcome']}**")
+
+    if prediction_result["risk_level"] == "Low Risk":
+        st.success("Low Risk")
+    elif prediction_result["risk_level"] == "Medium Risk":
+        st.warning("Medium Risk")
     else:
-        st.error("🔴 High Risk")
-        st.write("👉 Recommend retention strategy (discount / engagement)")
+        st.error("High Risk")
+        st.write("Recommend a retention strategy such as discounting or proactive engagement.")
 
-    st.write("### 🔍 Why this prediction?")
-    reasons = []
-
-    if tenure < 12:
-        reasons.append("Low tenure")
-    if contract == "Month-to-month":
-        reasons.append("Flexible contract")
-    if internet == "Fiber optic":
-        reasons.append("Fiber users churn more")
-    if tech_support == "No":
-        reasons.append("No tech support")
-    if monthly > 80:
-        reasons.append("High monthly charges")
-
+    st.write("### Why this prediction?")
     if reasons:
-        for r in reasons:
-            st.write("•", r)
+        for reason in reasons:
+            st.write(f"- {reason}")
     else:
         st.write("No strong churn signals")
 
-    st.write("### Input Data")
-    st.write(input_df)
+    with st.expander("Prediction Input Snapshot", expanded=False):
+        st.dataframe(input_df, use_container_width=True)
+
+
+def render_prediction_history(history_data):
+    st.subheader("Prediction History")
+
+    predictions = history_data.get("predictions", [])
+    if not predictions:
+        st.info("No predictions stored for this user yet.")
+        return
+
+    history_rows = []
+    for item in predictions:
+        history_rows.append(
+            {
+                "Prediction ID": item["prediction_id"],
+                "Created At": pd.to_datetime(item["created_at"]).strftime("%Y-%m-%d %H:%M:%S"),
+                "Risk Level": item["risk_level"],
+                "Churn Probability": f"{item['churn_probability']:.2%}",
+                "Confidence": f"{item['confidence']:.2f}",
+                "Latency (ms)": round(item["processing_time_ms"], 2),
+                "Model Version": item["model_version"],
+                "Predicted Outcome": item["predicted_outcome"],
+                "Actual Outcome": item["actual_outcome"] or "Not recorded",
+                "Comparison": item["comparison_status"] or "Pending",
+                "Reasons": ", ".join(item["reasons"]) if item["reasons"] else "No strong churn signals",
+            }
+        )
+
+    history_df = pd.DataFrame(history_rows)
+    st.dataframe(history_df, use_container_width=True, hide_index=True)
+
+
+def render_registration_rules():
+    st.markdown(
+        """
+        <div class="tiny-note">
+            Name rules: start with a capital letter, use letters only with spaces, apostrophes, or hyphens,
+            avoid numbers, and keep single-word names reasonably short.
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
+st.set_page_config(page_title="Customer Churn Prediction System", layout="wide")
+apply_theme()
+render_page_header(
+    title="Customer Churn Prediction System",
+    subtitle=(
+        "Register a customer-facing session, route predictions through FastAPI, "
+        "and keep a clean history of churn decisions in one place."
+    ),
+    kicker="Prediction Workspace",
+)
+
+registered_user = st.session_state.get(USER_SESSION_KEY)
+last_prediction = st.session_state.get(LAST_PREDICTION_SESSION_KEY)
+history_data = None
+history_error = None
+
+if registered_user:
+    try:
+        history_data = get_json(
+            f"/users/{registered_user['user_id']}/predictions?limit={PREDICTION_HISTORY_LIMIT}"
+        )
+    except requests.RequestException as error:
+        history_error = build_error_message(error)
+
+with st.sidebar:
+    sidebar_rows = [("API Base URL", API_BASE_URL)]
+    if registered_user:
+        sidebar_rows.extend(
+            [
+                ("Registered User", registered_user["name"]),
+                ("User ID", registered_user["user_id"]),
+            ]
+        )
+        if history_data and history_data.get("predictions"):
+            sidebar_rows.extend(
+                [
+                    ("Stored Predictions", history_data["total_predictions"]),
+                    ("Active Model", history_data["predictions"][0]["model_version"]),
+                ]
+            )
+    render_sidebar_block(
+        "Backend Session",
+        sidebar_rows,
+        note=(
+            "Switch user any time to start a fresh session."
+            if registered_user
+            else "Register a user first to unlock the prediction workflow."
+        ),
+    )
+    if registered_user:
+        if st.button("Switch User"):
+            reset_user_session()
+            st.rerun()
+
+if not registered_user:
+    register_col, info_col = st.columns([1.25, 0.85])
+
+    with register_col:
+        st.subheader("Step 1: Register User")
+        with st.form("register_user_form", clear_on_submit=False):
+            user_name = st.text_input(
+                "Enter your name",
+                placeholder="Example: Rahul Sharma",
+                help="Use a proper name format, for example Rahul Sharma or Maria Jones.",
+            )
+            register_submitted = st.form_submit_button("Continue")
+
+        render_registration_rules()
+
+        if register_submitted:
+            try:
+                cleaned_name = validate_user_name(user_name)
+            except ValueError as error:
+                st.error(str(error))
+            else:
+                try:
+                    user_data = post_json("/users/register", {"name": cleaned_name})
+                except requests.RequestException as error:
+                    st.error(build_error_message(error))
+                else:
+                    st.session_state[USER_SESSION_KEY] = user_data
+                    st.session_state.pop(LAST_PREDICTION_SESSION_KEY, None)
+                    st.success(
+                        f"Registration successful for {user_data['name']}. "
+                        f"Assigned user ID: {user_data['user_id']}"
+                    )
+                    st.rerun()
+
+    with info_col:
+        render_soft_panel(
+            "Why register first?",
+            "Each prediction is linked to a real user session so the backend can track history, model version, and later actual outcomes.",
+        )
+        render_soft_panel(
+            "Fast flow",
+            "Once registration succeeds, the prediction form unlocks immediately and all future requests reuse the same session.",
+        )
+        render_soft_panel(
+            "Admin ready",
+            "The admin dashboard can later review who predicted what, when they did it, and whether the model matched reality.",
+        )
+
+    st.stop()
+
+overview_col_1, overview_col_2, overview_col_3, overview_col_4 = st.columns(4)
+overview_col_1.metric("User ID", registered_user["user_id"])
+overview_col_2.metric(
+    "Predictions Stored",
+    history_data["total_predictions"] if history_data else 0,
+)
+overview_col_3.metric(
+    "Latest Latency",
+    (
+        f"{history_data['predictions'][0]['processing_time_ms']:.0f} ms"
+        if history_data and history_data.get("predictions")
+        else "N/A"
+    ),
+)
+overview_col_4.metric(
+    "Current Model",
+    history_data["predictions"][0]["model_version"].split(":")[0]
+    if history_data and history_data.get("predictions")
+    else "Pending",
+)
+
+st.write(f"Welcome back, **{registered_user['name']}**.")
+if history_error:
+    st.warning(history_error)
+elif history_data and history_data.get("predictions"):
+    st.caption(f"Current model version: {history_data['predictions'][0]['model_version']}")
+else:
+    st.caption("Current model version will appear after the first prediction is stored.")
+
+form_col, context_col = st.columns([1.45, 0.85])
+
+with form_col:
+    st.subheader("Step 2: Customer Details")
+
+    gender = st.selectbox("Gender", ["Male", "Female"], key="gender")
+    senior = st.selectbox("Senior Citizen", [0, 1], key="senior")
+    partner = st.selectbox("Partner", ["Yes", "No"], key="partner")
+    dependents = st.selectbox("Dependents", ["Yes", "No"], key="dependents")
+
+    phone = st.selectbox("Phone Service", ["Yes", "No"], key="phone")
+    if phone == "No":
+        multiple_lines = "No phone service"
+        st.info("No phone service selected, so Multiple Lines is auto-set.")
+    else:
+        multiple_lines = st.selectbox("Multiple Lines", ["Yes", "No"], key="multiple_lines")
+
+    internet = st.selectbox("Internet Service", ["DSL", "Fiber optic", "No"], key="internet")
+    if internet == "No":
+        st.info("No internet selected, so all dependent internet services are auto-set.")
+        online_security = "No internet service"
+        online_backup = "No internet service"
+        device_protection = "No internet service"
+        tech_support = "No internet service"
+        streaming_tv = "No internet service"
+        streaming_movies = "No internet service"
+    else:
+        online_security = st.selectbox("Online Security", ["Yes", "No"], key="online_security")
+        online_backup = st.selectbox("Online Backup", ["Yes", "No"], key="online_backup")
+        device_protection = st.selectbox("Device Protection", ["Yes", "No"], key="device_protection")
+        tech_support = st.selectbox("Tech Support", ["Yes", "No"], key="tech_support")
+        streaming_tv = st.selectbox("Streaming TV", ["Yes", "No"], key="streaming_tv")
+        streaming_movies = st.selectbox("Streaming Movies", ["Yes", "No"], key="streaming_movies")
+
+    contract = st.selectbox("Contract", ["Month-to-month", "One year", "Two year"], key="contract")
+    paperless = st.selectbox("Paperless Billing", ["Yes", "No"], key="paperless")
+    payment = st.selectbox(
+        "Payment Method",
+        [
+            "Electronic check",
+            "Mailed check",
+            "Bank transfer (automatic)",
+            "Credit card (automatic)",
+        ],
+        key="payment",
+    )
+    monthly = st.number_input(
+        "Monthly Charges",
+        min_value=0.0,
+        max_value=200.0,
+        value=70.0,
+        key="monthly",
+    )
+    tenure = st.slider("Tenure (months)", min_value=0, max_value=72, value=12, key="tenure")
+
+    prediction_payload = {
+        "user_id": registered_user["user_id"],
+        "customer": {
+            "gender": gender,
+            "senior_citizen": senior,
+            "partner": partner,
+            "dependents": dependents,
+            "phone_service": phone,
+            "multiple_lines": multiple_lines,
+            "internet_service": internet,
+            "online_security": online_security,
+            "online_backup": online_backup,
+            "device_protection": device_protection,
+            "tech_support": tech_support,
+            "streaming_tv": streaming_tv,
+            "streaming_movies": streaming_movies,
+            "contract": contract,
+            "paperless_billing": paperless,
+            "payment_method": payment,
+            "monthly_charges": monthly,
+            "tenure": tenure,
+        },
+    }
+
+    if st.button("Predict Churn", type="primary"):
+        with st.spinner("Running churn prediction..."):
+            try:
+                prediction_result = post_json("/predict", prediction_payload)
+            except requests.RequestException as error:
+                st.error(build_error_message(error))
+            else:
+                st.session_state[LAST_PREDICTION_SESSION_KEY] = prediction_result
+                last_prediction = prediction_result
+                history_data = build_updated_history(
+                    history_data=history_data,
+                    prediction_result=prediction_result,
+                    user_name=registered_user["name"],
+                )
+
+with context_col:
+    render_soft_panel(
+        "Current Session",
+        f"User {registered_user['user_id']} is active. Every prediction is logged and can later be reviewed in the admin dashboard.",
+    )
+    render_soft_panel(
+        "Latency Tip",
+        "The backend preloads the model on startup, so later predictions should feel faster than the very first call after a restart.",
+    )
+    render_soft_panel(
+        "What gets tracked",
+        "Probability, risk level, model version, latency, predicted outcome, and later the actual retention result for comparison.",
+    )
+
+result_tab, history_tab = st.tabs(["Latest Prediction", "Prediction History"])
+
+with result_tab:
+    if last_prediction:
+        render_prediction_result(last_prediction)
+    else:
+        st.info("Run a churn prediction to see the latest result here.")
+
+with history_tab:
+    if history_data:
+        render_prediction_history(history_data)
+    else:
+        st.info("Prediction history will appear after the first stored result.")

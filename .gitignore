@@ -1,0 +1,34 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Local databases and runtime artifacts
+churn_app.db
+*.db
+*.db-shm
+*.db-wal
+*.sqlite3
+
+# Local secrets and environment files
+.streamlit/secrets.toml
+.env
+.env.*
+!.env.example
+
+# Local tool/version manager files
+.python-version
+uv.lock
+
+# Test/tool caches
+.pytest_cache/
+.mypy_cache/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
