@@ -1,5 +1,9 @@
-def main():
-    print("Hello from customer-churn-end-to-end!")
+import os
+
+import uvicorn
+
+from backend.main import app
+
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", "8000")))
