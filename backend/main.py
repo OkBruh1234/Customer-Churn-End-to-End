@@ -45,6 +45,16 @@ def startup_event():
     warm_prediction_resources()
 
 
+@app.get("/")
+def root():
+    return {
+        "message": "Customer Churn Backend is running.",
+        "health": "/health",
+        "docs": "/docs",
+        "model_version": get_model_version(),
+    }
+
+
 def build_prediction_history_item(prediction_log):
     payload = {}
     if prediction_log.input_payload:
