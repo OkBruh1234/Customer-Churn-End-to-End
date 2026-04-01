@@ -6,23 +6,68 @@ import streamlit as st
 
 DEFAULT_API_BASE_URL = "http://127.0.0.1:8000"
 LOCAL_API_HOSTS = {"127.0.0.1", "localhost", "0.0.0.0"}
+API_BASE_URL_SECRET_PATHS = (
+    ("API_BASE_URL",),
+    ("api_base_url",),
+    ("general", "API_BASE_URL"),
+    ("general", "api_base_url"),
+    ("backend", "API_BASE_URL"),
+    ("backend", "api_base_url"),
+)
+API_BASE_URL_ENV_KEYS = ("API_BASE_URL", "api_base_url")
 
 
-def get_api_base_url():
-    secret_value = None
+def _read_streamlit_secret(path):
     try:
-        secret_value = st.secrets.get("API_BASE_URL")
+        value = st.secrets
     except Exception:
-        secret_value = None
+        return None
 
-    raw_value = secret_value or os.getenv("API_BASE_URL") or DEFAULT_API_BASE_URL
+    for key in path:
+        if value is None:
+            return None
+
+        try:
+            value = value.get(key)
+        except Exception:
+            return None
+
+    return value
+
+
+def get_api_base_url_config():
+    raw_value = None
+    source = "default"
+
+    for path in API_BASE_URL_SECRET_PATHS:
+        secret_value = _read_streamlit_secret(path)
+        if secret_value:
+            raw_value = secret_value
+            source = f"streamlit_secret:{'.'.join(path)}"
+            break
+
+    if not raw_value:
+        for key in API_BASE_URL_ENV_KEYS:
+            env_value = os.getenv(key)
+            if env_value:
+                raw_value = env_value
+                source = f"environment:{key}"
+                break
+
+    if not raw_value:
+        raw_value = DEFAULT_API_BASE_URL
+
     raw_value = str(raw_value).strip()
 
     # Small convenience for deployed domains entered without a scheme.
     if raw_value and "://" not in raw_value and " " not in raw_value and "." in raw_value:
         raw_value = f"https://{raw_value}"
 
-    return raw_value.rstrip("/")
+    return raw_value.rstrip("/"), source
+
+
+def get_api_base_url():
+    return get_api_base_url_config()[0]
 
 
 def get_api_base_url_issue(api_base_url):

@@ -2,12 +2,13 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from runtime_config import get_api_base_url, get_api_base_url_issue
+from runtime_config import get_api_base_url_config, get_api_base_url_issue
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL = get_api_base_url()
+API_BASE_URL, API_BASE_URL_SOURCE = get_api_base_url_config()
 API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
+BACKEND_TIMEOUT_SECONDS = 75
 USER_HISTORY_LIMIT = 50
 ADMIN_SUMMARY_KEY = "admin_summary_cache"
 ADMIN_USERS_KEY = "admin_users_cache"
@@ -28,7 +29,8 @@ def build_error_message(error):
 
     default_message = (
         f"Could not reach the backend at {API_BASE_URL}. "
-        "Make sure your public FastAPI URL is set in API_BASE_URL."
+        "Make sure your public FastAPI URL is set in API_BASE_URL. "
+        "If you are using Render free tier, the first wake-up can take a little longer."
     )
     response = getattr(error, "response", None)
     if response is None:
@@ -50,7 +52,7 @@ def request_json(method, path, payload=None):
     request_kwargs = {
         "method": method,
         "url": f"{API_BASE_URL}{path}",
-        "timeout": 30,
+        "timeout": BACKEND_TIMEOUT_SECONDS,
     }
     if payload is not None:
         request_kwargs["json"] = payload
@@ -211,7 +213,7 @@ force_refresh = False
 with st.sidebar:
     render_sidebar_block(
         "Admin Controls",
-        [("API Base URL", API_BASE_URL)],
+        [("API Base URL", API_BASE_URL), ("Config Source", API_BASE_URL_SOURCE)],
         note="Refresh only when you want to pull the newest backend state.",
     )
     if API_BASE_URL_ISSUE:

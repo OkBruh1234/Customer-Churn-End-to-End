@@ -3,12 +3,13 @@ import requests
 import streamlit as st
 
 from backend.validation import validate_user_name
-from runtime_config import get_api_base_url, get_api_base_url_issue
+from runtime_config import get_api_base_url_config, get_api_base_url_issue
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL = get_api_base_url()
+API_BASE_URL, API_BASE_URL_SOURCE = get_api_base_url_config()
 API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
+BACKEND_TIMEOUT_SECONDS = 75
 USER_SESSION_KEY = "registered_user"
 LAST_PREDICTION_SESSION_KEY = "last_prediction"
 PREDICTION_HISTORY_LIMIT = 10
@@ -27,7 +28,8 @@ def build_error_message(error):
 
     default_message = (
         f"Could not reach the backend at {API_BASE_URL}. "
-        "Make sure your public FastAPI URL is set in API_BASE_URL."
+        "Make sure your public FastAPI URL is set in API_BASE_URL. "
+        "If you are using Render free tier, the first wake-up can take a little longer."
     )
     response = getattr(error, "response", None)
     if response is None:
@@ -49,7 +51,7 @@ def request_json(method, path, payload=None):
     request_kwargs = {
         "method": method,
         "url": f"{API_BASE_URL}{path}",
-        "timeout": 30,
+        "timeout": BACKEND_TIMEOUT_SECONDS,
     }
     if payload is not None:
         request_kwargs["json"] = payload
@@ -215,7 +217,10 @@ if registered_user:
         history_error = build_error_message(error)
 
 with st.sidebar:
-    sidebar_rows = [("API Base URL", API_BASE_URL)]
+    sidebar_rows = [
+        ("API Base URL", API_BASE_URL),
+        ("Config Source", API_BASE_URL_SOURCE),
+    ]
     if registered_user:
         sidebar_rows.extend(
             [
