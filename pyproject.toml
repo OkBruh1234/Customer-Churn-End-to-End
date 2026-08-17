@@ -3,15 +3,19 @@ name = "customer-churn-end-to-end"
 version = "0.1.0"
 description = "Customer churn prediction app with Streamlit, FastAPI, and SQLAlchemy"
 readme = "README.md"
-# Was ">=3.14". Nothing in this codebase needs 3.14, and demanding it forces a
-# toolchain where several scientific wheels are not prebuilt, so `uv sync` would
-# source-compile scipy/scikit-learn — minutes of build time and an OOM risk on a
-# 512 MB free instance. 3.11+ has manylinux wheels for the whole stack.
+# Was ">=3.14", which pinned the floor to a single release series for no reason
+# the code requires. Local development runs 3.14 (see .python-version) and every
+# pinned dependency below ships cp311-cp314 manylinux wheels, so a lower floor
+# costs nothing and keeps the deploy target free to move if a host does not yet
+# offer 3.14.
 requires-python = ">=3.11"
 dependencies = [
     "fastapi~=0.141",
     "uvicorn~=0.52",
     "sqlalchemy~=2.0",
+    # Postgres driver, used when DATABASE_URL points at Postgres instead of the
+    # default ephemeral SQLite file.
+    "psycopg[binary]~=3.3",
     # Pinned to the version that wrote churn_model.pkl. See requirements.txt.
     "scikit-learn==1.8.0",
     "numpy==2.3.4",

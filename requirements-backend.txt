@@ -12,6 +12,11 @@ fastapi~=0.141
 uvicorn~=0.52
 sqlalchemy~=2.0
 
+# Postgres driver. Required whenever DATABASE_URL points at Postgres rather than
+# the default ephemeral SQLite file; backend/database.py rewrites the legacy
+# postgres:// scheme Render hands out to postgresql+psycopg://.
+psycopg[binary]~=3.3
+
 # Pinned exactly to the version that wrote churn_model.pkl. See requirements.txt.
 scikit-learn==1.8.0
 numpy==2.3.4

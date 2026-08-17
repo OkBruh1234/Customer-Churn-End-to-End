@@ -3,13 +3,30 @@ import os
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./churn_app.db")
 
-engine_kwargs = {}
-if DATABASE_URL.startswith("sqlite"):
-    engine_kwargs["connect_args"] = {"check_same_thread": False}
+def normalize_database_url(database_url):
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
 
-engine = create_engine(DATABASE_URL, **engine_kwargs)
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    return database_url
+
+
+def create_db_engine(database_url):
+    normalized_url = normalize_database_url(database_url)
+
+    engine_kwargs = {}
+    if normalized_url.startswith("sqlite"):
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+
+    return create_engine(normalized_url, **engine_kwargs)
+
+
+DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL", "sqlite:///./churn_app.db"))
+
+engine = create_db_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -26,11 +43,12 @@ def init_db():
     from backend import models
 
     Base.metadata.create_all(bind=engine)
-    run_startup_migrations()
+    run_startup_migrations(engine)
 
 
-def run_startup_migrations():
-    inspector = inspect(engine)
+def run_startup_migrations(target_engine=None):
+    migration_engine = target_engine or engine
+    inspector = inspect(migration_engine)
     if not inspector.has_table("predictions"):
         return
 
@@ -50,6 +68,6 @@ def run_startup_migrations():
     if not migration_statements:
         return
 
-    with engine.begin() as connection:
+    with migration_engine.begin() as connection:
         for statement in migration_statements:
             connection.execute(text(statement))

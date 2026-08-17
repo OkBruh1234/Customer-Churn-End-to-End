@@ -16,6 +16,10 @@ fastapi~=0.141
 uvicorn~=0.52
 sqlalchemy~=2.0
 
+# Postgres driver, used when DATABASE_URL points at Postgres instead of the
+# default ephemeral SQLite file.
+psycopg[binary]~=3.3
+
 # --- Model serving ---
 # scikit-learn is pinned exactly: churn_model.pkl was written by 1.8.0, and
 # unpickling it under a different minor version raises InconsistentVersionWarning
