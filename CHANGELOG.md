@@ -124,14 +124,44 @@ Run against a live local backend, not mocked:
   retry button all appear; no unhandled exception.
 - `scikit-learn==1.8.0` loads `churn_model.pkl` with warnings-as-errors passing.
 
+### Verified in production
+
+Measured against the deployed Render service after merging (2026-08-17):
+
+| Signal | Value |
+| --- | --- |
+| `warm_duration_ms` reported by `/health` | **16703.61** |
+| `/health` response time, warm | 0.60 – 1.04 s |
+| `POST /predict` round trip | 0.78 s |
+| Server-side `processing_time_ms` | 202.71 |
+| `churn_probability` for the reference row | 0.7489 |
+
+Two things this confirms:
+
+- **Warm-up on Render's free tier takes 16.7 s.** Under the previous blocking
+  startup, every one of those seconds delayed the listening socket and so
+  delayed the platform seeing a live service. It now runs on a background
+  thread while `/health` answers in under a second.
+- **The scikit-learn pin holds across environments.** The reference row scores
+  0.7489 in production, identical to the local benchmark, so the 1.8.0 pin
+  reproduces predictions rather than merely silencing a warning.
+
+Render built successfully with `.python-version` at `3.14`, so the fallback to
+`3.13.4` is not needed.
+
+The keep-alive workflow completed with conclusion `success` on its first
+`workflow_dispatch` run.
+
 ### Not verified
 
-- **Live timing against the deployed Render URL.** The authoring environment's
-  egress policy blocked outbound HTTPS to the backend host (403 on CONNECT).
-  Run `scripts/measure_cold_start.sh <url>` to capture real numbers.
-- **The Postgres path end to end.** The cold-start work was verified against
-  SQLite. Confirm `DATABASE_URL` against a real Postgres instance before relying
-  on it.
+- **A true cold start.** All timings above were taken against an already-running
+  instance. To measure the spun-down path, leave the service idle for >15
+  minutes with the keep-alive workflow disabled, or suspend and resume it in the
+  Render dashboard, then run `scripts/measure_cold_start.sh <url>`.
+- **The Postgres path end to end.** `DATABASE_URL` is not yet set on the Render
+  service, so it is still running on ephemeral SQLite — a fresh registration
+  returned `USR-000001`, confirming the database had been reset. The cold-start
+  work was verified against SQLite only.
 
 ### Manual steps still required
 
