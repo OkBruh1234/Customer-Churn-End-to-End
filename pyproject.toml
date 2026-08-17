@@ -3,19 +3,34 @@ name = "customer-churn-end-to-end"
 version = "0.1.0"
 description = "Customer churn prediction app with Streamlit, FastAPI, and SQLAlchemy"
 readme = "README.md"
-requires-python = ">=3.14"
+# Was ">=3.14", which pinned the floor to a single release series for no reason
+# the code requires. Local development runs 3.14 (see .python-version) and every
+# pinned dependency below ships cp311-cp314 manylinux wheels, so a lower floor
+# costs nothing and keeps the deploy target free to move if a host does not yet
+# offer 3.14.
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi",
-    "joblib",
-    "matplotlib",
-    "numpy",
-    "pandas",
-    "requests",
-    "scikit-learn",
-    "seaborn",
-    "shap",
-    "sqlalchemy",
-    "streamlit",
-    "uvicorn",
-    "xgboost",
+    "fastapi~=0.141",
+    "uvicorn~=0.52",
+    "sqlalchemy~=2.0",
+    # Postgres driver, used when DATABASE_URL points at Postgres instead of the
+    # default ephemeral SQLite file.
+    "psycopg[binary]~=3.3",
+    # Pinned to the version that wrote churn_model.pkl. See requirements.txt.
+    "scikit-learn==1.8.0",
+    "numpy==2.3.4",
+    "pandas==2.3.3",
+    "joblib==1.5.2",
+    "streamlit~=1.61",
+    "requests~=2.34",
+]
+
+[dependency-groups]
+# Training / notebook only. Never installed by the deployed services.
+dev = [
+    "matplotlib~=3.10",
+    "seaborn~=0.13",
+    "shap~=0.48",
+    "xgboost~=3.1",
+    "jupyter~=1.1",
 ]

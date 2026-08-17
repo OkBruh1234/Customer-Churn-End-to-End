@@ -1,0 +1,95 @@
+name: Keep backend awake
+
+# Render's free tier spins a web service down after ~15 minutes with no inbound
+# traffic, and waking it costs a full container boot. This pings /health often
+# enough that the instance stays warm during the hours people actually open the
+# app, so the Streamlit UI talks to an already-running backend.
+#
+# ── One-time setup ───────────────────────────────────────────────────────────
+# Add the backend URL under Settings → Secrets and variables → Actions:
+#   • Variables tab → New repository variable
+#   • Name: BACKEND_URL
+#   • Value: your Render base URL, no trailing slash
+# It is deliberately not hardcoded here so the deployed URL lives in exactly one
+# place. A repository *secret* of the same name also works and takes precedence.
+#
+# ── Why not every 10 minutes, 24/7? ──────────────────────────────────────────
+# Free instance time is capped at 750 hours/month per workspace, and a month is
+# ~730 hours. Pinning one service awake around the clock consumes essentially
+# the entire allowance and leaves nothing for a second free service — when the
+# cap is hit, Render suspends the service outright, which is far worse than a
+# cold start. The window below keeps it awake ~20h/day (~608 h/month), leaving
+# real headroom. For 24/7, change the cron to '*/10 * * * *' and make sure this
+# is the only free service in the workspace.
+#
+# Schedule is UTC. '0-19' covers 05:30–01:29 IST and most of the US workday.
+
+on:
+  schedule:
+    - cron: '*/10 0-19 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve backend URL
+        id: resolve
+        env:
+          URL_FROM_SECRET: ${{ secrets.BACKEND_URL }}
+          URL_FROM_VAR: ${{ vars.BACKEND_URL }}
+        run: |
+          BACKEND_URL="${URL_FROM_SECRET:-$URL_FROM_VAR}"
+          if [ -z "$BACKEND_URL" ]; then
+            echo "::error::BACKEND_URL is not configured."
+            echo "Set it under Settings -> Secrets and variables -> Actions -> Variables,"
+            echo "with name BACKEND_URL and your Render base URL as the value."
+            exit 1
+          fi
+          echo "url=${BACKEND_URL%/}" >> "$GITHUB_OUTPUT"
+
+      - name: Ping /health until awake
+        env:
+          BACKEND_URL: ${{ steps.resolve.outputs.url }}
+        run: |
+          set -uo pipefail
+
+          # --retry covers the window where Render's edge answers 502/503 while
+          # the container boots. The point is to *wake* the instance, not merely
+          # observe that it is asleep, so give the cold path room to finish.
+          BODY_FILE="$(mktemp)"
+          HTTP_CODE=$(curl --silent --show-error \
+            --location \
+            --max-time 240 \
+            --connect-timeout 15 \
+            --retry 5 \
+            --retry-delay 10 \
+            --retry-all-errors \
+            --write-out '%{http_code}' \
+            --output "$BODY_FILE" \
+            "$BACKEND_URL/health" || echo "000")
+
+          echo "HTTP $HTTP_CODE"
+          echo "Response: $(cat "$BODY_FILE")"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "::error::Backend did not return 200 (got $HTTP_CODE)."
+            exit 1
+          fi
+
+          # model_ready=false means we caught it mid warm-up. Not a failure —
+          # the warm-up runs on a background thread and finishes in seconds —
+          # but worth surfacing in the run log.
+          if grep -q '"model_ready":false' "$BODY_FILE"; then
+            echo "::notice::Instance was cold; model is still warming."
+          else
+            echo "::notice::Instance already warm."
+          fi

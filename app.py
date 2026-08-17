@@ -3,75 +3,48 @@ import requests
 import streamlit as st
 
 from backend.validation import validate_user_name
-from runtime_config import get_api_base_url_config, get_api_base_url_issue
+from backend_client import (
+    API_BASE_URL,
+    API_BASE_URL_ISSUE,
+    API_BASE_URL_SOURCE,
+    FAST_TIMEOUT,
+    build_error_message,
+    call_with_wake,
+    get_json,
+    is_missing_user_error,
+    post_json,
+    probe_health,
+    wake_backend,
+)
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL, API_BASE_URL_SOURCE = get_api_base_url_config()
-API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
-BACKEND_TIMEOUT_SECONDS = 75
 USER_SESSION_KEY = "registered_user"
 LAST_PREDICTION_SESSION_KEY = "last_prediction"
 PREDICTION_HISTORY_LIMIT = 10
 
 
-@st.cache_resource
-def get_http_session():
-    session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
-    return session
-
-
-def build_error_message(error):
-    if API_BASE_URL_ISSUE:
-        return API_BASE_URL_ISSUE
-
-    default_message = (
-        f"Could not reach the backend at {API_BASE_URL}. "
-        "Make sure your public FastAPI URL is set in API_BASE_URL. "
-        "If you are using Render free tier, the first wake-up can take a little longer."
-    )
-    response = getattr(error, "response", None)
-    if response is None:
-        return default_message
-
-    try:
-        payload = response.json()
-    except ValueError:
-        return default_message
-
-    detail = payload.get("detail")
-    if detail:
-        return f"Backend error: {detail}"
-
-    return default_message
-
-
-def request_json(method, path, payload=None):
-    request_kwargs = {
-        "method": method,
-        "url": f"{API_BASE_URL}{path}",
-        "timeout": BACKEND_TIMEOUT_SECONDS,
-    }
-    if payload is not None:
-        request_kwargs["json"] = payload
-
-    response = get_http_session().request(**request_kwargs)
-    response.raise_for_status()
-    return response.json()
-
-
-def get_json(path):
-    return request_json("GET", path)
-
-
-def post_json(path, payload):
-    return request_json("POST", path, payload=payload)
-
-
 def reset_user_session():
     st.session_state.pop(USER_SESSION_KEY, None)
     st.session_state.pop(LAST_PREDICTION_SESSION_KEY, None)
+
+
+def register_user(name):
+    return post_json("/users/register", {"name": name})
+
+
+def re_register_user(name):
+    """Re-create the user after the backend's ephemeral database was wiped.
+
+    The Render instance keeps SQLite on disk that does not survive a spin-down,
+    so a browser session can hold a perfectly valid-looking user id that no
+    longer exists server-side. Rather than dead-ending on "User not found", we
+    register the same name again and carry on with the new id.
+    """
+    user_data = register_user(name)
+    st.session_state[USER_SESSION_KEY] = user_data
+    st.session_state.pop(LAST_PREDICTION_SESSION_KEY, None)
+    return user_data
 
 
 def build_updated_history(history_data, prediction_result, user_name):
@@ -203,18 +176,68 @@ render_page_header(
     kicker="Prediction Workspace",
 )
 
+# Wake the instance before the user touches anything. Previously the first
+# backend call was the registration POST, so the whole cold start was paid with
+# the UI frozen and no feedback. Doing it here means the boot overlaps with the
+# user reading the page and typing their name.
+backend_health = None
+if not API_BASE_URL_ISSUE:
+    backend_health = probe_health()
+
+    if backend_health is None:
+        with st.status("Backend is asleep — waking it up…", expanded=True) as wake_status:
+            progress_slot = st.empty()
+            progress_slot.write("Contacting the backend…")
+            st.caption(
+                "The API runs on Render's free tier, which spins the instance down "
+                "after 15 minutes of inactivity. A cold boot usually takes 1–2 minutes. "
+                "This only happens on the first request."
+            )
+            backend_health = wake_backend(status_callback=progress_slot.write)
+
+            if backend_health is None:
+                wake_status.update(label="Backend did not respond in time.", state="error")
+            else:
+                wake_status.update(label="Backend is awake.", state="complete")
+
+        if backend_health is None:
+            st.error(
+                f"Could not wake the backend at {API_BASE_URL}. It may be redeploying "
+                "or suspended. Check the Render dashboard, then retry."
+            )
+            if st.button("Retry connection"):
+                st.rerun()
+            st.stop()
+
+    if not backend_health.get("model_ready", True):
+        st.caption("Backend is up; the model is still warming in the background.")
+
 registered_user = st.session_state.get(USER_SESSION_KEY)
 last_prediction = st.session_state.get(LAST_PREDICTION_SESSION_KEY)
 history_data = None
 history_error = None
 
 if registered_user:
+    history_path = (
+        f"/users/{registered_user['user_id']}/predictions?limit={PREDICTION_HISTORY_LIMIT}"
+    )
     try:
-        history_data = get_json(
-            f"/users/{registered_user['user_id']}/predictions?limit={PREDICTION_HISTORY_LIMIT}"
-        )
+        history_data = call_with_wake(lambda: get_json(history_path, timeout=FAST_TIMEOUT))
     except requests.RequestException as error:
-        history_error = build_error_message(error)
+        if is_missing_user_error(error):
+            # Ephemeral database was wiped by a restart. Re-register silently and
+            # start a fresh history rather than showing a 404 to the user.
+            try:
+                registered_user = re_register_user(registered_user["name"])
+                history_data = None
+                st.info(
+                    "The backend restarted and its temporary database was reset, so "
+                    f"your session was re-registered as {registered_user['user_id']}."
+                )
+            except requests.RequestException as register_error:
+                history_error = build_error_message(register_error)
+        else:
+            history_error = build_error_message(error)
 
 with st.sidebar:
     sidebar_rows = [
@@ -272,11 +295,20 @@ if not registered_user:
             except ValueError as error:
                 st.error(str(error))
             else:
+                # The old version ran this bare, so a cold backend showed a
+                # motionless page for the full timeout and then an error.
+                status_slot = st.empty()
                 try:
-                    user_data = post_json("/users/register", {"name": cleaned_name})
+                    with st.spinner("Registering your session…"):
+                        user_data = call_with_wake(
+                            lambda: register_user(cleaned_name),
+                            status_callback=status_slot.info,
+                        )
                 except requests.RequestException as error:
+                    status_slot.empty()
                     st.error(build_error_message(error))
                 else:
+                    status_slot.empty()
                     st.session_state[USER_SESSION_KEY] = user_data
                     st.session_state.pop(LAST_PREDICTION_SESSION_KEY, None)
                     st.success(
@@ -410,12 +442,35 @@ with form_col:
     }
 
     if st.button("Predict Churn", type="primary"):
+        status_slot = st.empty()
         with st.spinner("Running churn prediction..."):
             try:
-                prediction_result = post_json("/predict", prediction_payload)
+                try:
+                    prediction_result = call_with_wake(
+                        lambda: post_json("/predict", prediction_payload),
+                        status_callback=status_slot.info,
+                    )
+                except requests.RequestException as error:
+                    if not is_missing_user_error(error):
+                        raise
+                    # Backend restarted and lost its ephemeral database. Re-register
+                    # under the same name and replay the prediction against the new id.
+                    registered_user = re_register_user(registered_user["name"])
+                    prediction_payload["user_id"] = registered_user["user_id"]
+                    prediction_result = call_with_wake(
+                        lambda: post_json("/predict", prediction_payload),
+                        status_callback=status_slot.info,
+                    )
+                    history_data = None
+                    st.info(
+                        "The backend restarted and its temporary database was reset, so "
+                        f"your session was re-registered as {registered_user['user_id']}."
+                    )
             except requests.RequestException as error:
+                status_slot.empty()
                 st.error(build_error_message(error))
             else:
+                status_slot.empty()
                 st.session_state[LAST_PREDICTION_SESSION_KEY] = prediction_result
                 last_prediction = prediction_result
                 history_data = build_updated_history(
@@ -431,7 +486,9 @@ with context_col:
     )
     render_soft_panel(
         "Latency Tip",
-        "The backend preloads the model on startup, so later predictions should feel faster than the very first call after a restart.",
+        "The backend warms the model on a background thread at startup and runs a "
+        "throwaway prediction, so scoring itself lands in tens of milliseconds. Any "
+        "long wait you see is the free-tier instance booting, not the model.",
     )
     render_soft_panel(
         "What gets tracked",

@@ -22,7 +22,9 @@ churn_app.db
 !.env.example
 
 # Local tool/version manager files
-.python-version
+# .python-version is intentionally tracked: Render reads it to pick the runtime.
+# While it was ignored, Render fell back to its own default Python, so the build
+# could silently change version (and wheel availability) between deploys.
 uv.lock
 
 # Test/tool caches

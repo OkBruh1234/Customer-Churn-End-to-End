@@ -1,13 +1,34 @@
-streamlit
-pandas
-scikit-learn
-matplotlib
-seaborn
-xgboost
-joblib
-numpy
-shap
-fastapi
-uvicorn
-sqlalchemy
-requests
+# Shared runtime deps. Safe for BOTH deployments as-is:
+#   - Streamlit Community Cloud (auto-installs this file from the repo root)
+#   - Render, if its Build Command is still `pip install -r requirements.txt`
+#
+# For a much smaller/faster backend build, point Render at
+# requirements-backend.txt instead (see README "Deployment"). That drops
+# streamlit + pyarrow, which the API never imports.
+#
+# Training/EDA-only libraries (matplotlib, seaborn, shap, xgboost) moved to
+# requirements-dev.txt. The served model is a plain scikit-learn Pipeline
+# (ColumnTransformer -> RandomForestClassifier); it does not import any of them,
+# so shipping them only inflated the deploy image and the cold start.
+
+# --- API layer ---
+fastapi~=0.141
+uvicorn~=0.52
+sqlalchemy~=2.0
+
+# Postgres driver, used when DATABASE_URL points at Postgres instead of the
+# default ephemeral SQLite file.
+psycopg[binary]~=3.3
+
+# --- Model serving ---
+# scikit-learn is pinned exactly: churn_model.pkl was written by 1.8.0, and
+# unpickling it under a different minor version raises InconsistentVersionWarning
+# and risks silently wrong predictions.
+scikit-learn==1.8.0
+numpy==2.3.4
+pandas==2.3.3
+joblib==1.5.2
+
+# --- Frontend ---
+streamlit~=1.61
+requests~=2.34
