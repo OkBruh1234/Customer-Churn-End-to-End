@@ -3,19 +3,30 @@ name = "customer-churn-end-to-end"
 version = "0.1.0"
 description = "Customer churn prediction app with Streamlit, FastAPI, and SQLAlchemy"
 readme = "README.md"
-requires-python = ">=3.14"
+# Was ">=3.14". Nothing in this codebase needs 3.14, and demanding it forces a
+# toolchain where several scientific wheels are not prebuilt, so `uv sync` would
+# source-compile scipy/scikit-learn — minutes of build time and an OOM risk on a
+# 512 MB free instance. 3.11+ has manylinux wheels for the whole stack.
+requires-python = ">=3.11"
 dependencies = [
-    "fastapi",
-    "joblib",
-    "matplotlib",
-    "numpy",
-    "pandas",
-    "requests",
-    "scikit-learn",
-    "seaborn",
-    "shap",
-    "sqlalchemy",
-    "streamlit",
-    "uvicorn",
-    "xgboost",
+    "fastapi~=0.141",
+    "uvicorn~=0.52",
+    "sqlalchemy~=2.0",
+    # Pinned to the version that wrote churn_model.pkl. See requirements.txt.
+    "scikit-learn==1.8.0",
+    "numpy==2.3.4",
+    "pandas==2.3.3",
+    "joblib==1.5.2",
+    "streamlit~=1.61",
+    "requests~=2.34",
+]
+
+[dependency-groups]
+# Training / notebook only. Never installed by the deployed services.
+dev = [
+    "matplotlib~=3.10",
+    "seaborn~=0.13",
+    "shap~=0.48",
+    "xgboost~=3.1",
+    "jupyter~=1.1",
 ]

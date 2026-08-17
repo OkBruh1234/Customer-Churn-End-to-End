@@ -1,5 +1,6 @@
 import json
-from datetime import datetime
+import logging
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException, Query, status
 from sqlalchemy import func
@@ -12,14 +13,16 @@ from backend.identifiers import (
     parse_prediction_id,
     parse_user_id,
 )
-from backend.models import PredictionLog, User
+from backend.models import PredictionLog, User, utcnow
 from backend.prediction_service import (
     get_comparison_status,
     get_model_version,
     get_predicted_outcome,
+    get_warm_duration_ms,
+    is_model_ready,
     model_to_dict,
     predict_churn,
-    warm_prediction_resources,
+    start_background_warmup,
 )
 from backend.schemas import (
     AdminSummaryResponse,
@@ -36,13 +39,25 @@ from backend.schemas import (
 )
 from backend.validation import validate_user_name
 
-app = FastAPI(title="Customer Churn Backend", version="1.0.0")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
+logger = logging.getLogger(__name__)
 
 
-@app.on_event("startup")
-def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Bind the port first, warm the model second.
+
+    Uvicorn runs lifespan startup *before* it opens the listening socket, so any
+    slow work here delays Render's port detection and stretches an already slow
+    cold start. init_db is milliseconds against SQLite and has to finish before
+    the first request, but the model warm-up is handed to a background thread.
+    """
     init_db()
-    warm_prediction_resources()
+    start_background_warmup()
+    yield
+
+
+app = FastAPI(title="Customer Churn Backend", version="1.0.0", lifespan=lifespan)
 
 
 @app.get("/")
@@ -52,6 +67,7 @@ def root():
         "health": "/health",
         "docs": "/docs",
         "model_version": get_model_version(),
+        "model_ready": is_model_ready(),
     }
 
 
@@ -120,7 +136,18 @@ def build_admin_summary(db: Session):
 
 @app.get("/health", response_model=HealthResponse)
 def health_check():
-    return HealthResponse(status="ok", model_version=get_model_version())
+    """Cheap liveness probe. Never touches the model, so it answers while warming.
+
+    This is the endpoint the keep-alive cron hits. It stays 200 during warm-up
+    on purpose: a non-200 would make an uptime monitor flap on every deploy.
+    Use model_ready to tell a warm instance from one that just booted.
+    """
+    return HealthResponse(
+        status="ok",
+        model_version=get_model_version(),
+        model_ready=is_model_ready(),
+        warm_duration_ms=get_warm_duration_ms(),
+    )
 
 
 @app.post("/users/register", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED)
@@ -246,7 +273,7 @@ def update_prediction_outcome(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Prediction not found.")
 
     prediction_log.actual_outcome = payload.actual_outcome
-    prediction_log.outcome_recorded_at = datetime.utcnow()
+    prediction_log.outcome_recorded_at = utcnow()
 
     db.commit()
     db.refresh(prediction_log)
@@ -292,6 +319,15 @@ def get_admin_users(db: Session = Depends(get_db)):
 
 
 if __name__ == "__main__":
+    import os
+
     import uvicorn
 
-    uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    # reload=True spawns a file-watching supervisor and is a development-only
+    # flag; it must never be what a deployed instance runs.
+    uvicorn.run(
+        "backend.main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8000")),
+        reload=os.getenv("UVICORN_RELOAD", "").lower() in {"1", "true", "yes"},
+    )

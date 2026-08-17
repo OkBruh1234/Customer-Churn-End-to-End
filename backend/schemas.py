@@ -1,14 +1,26 @@
 from datetime import datetime
 from typing import Any, Dict, List, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.validation import MAX_USER_NAME_LENGTH
 
 
-class HealthResponse(BaseModel):
+class ModelFieldsBase(BaseModel):
+    """Base for schemas carrying model_* fields.
+
+    Pydantic v2 reserves the "model_" prefix and warns at class-definition time
+    for every such field. These are domain fields, not pydantic internals.
+    """
+
+    model_config = ConfigDict(protected_namespaces=())
+
+
+class HealthResponse(ModelFieldsBase):
     status: str
     model_version: str
+    model_ready: bool = False
+    warm_duration_ms: float | None = None
 
 
 class UserCreateRequest(BaseModel):
@@ -52,7 +64,7 @@ class PredictionRequest(BaseModel):
     customer: CustomerFeatures
 
 
-class PredictionResponse(BaseModel):
+class PredictionResponse(ModelFieldsBase):
     user_id: str
     prediction_id: str
     churn_probability: float
@@ -69,7 +81,7 @@ class PredictionResponse(BaseModel):
     outcome_recorded_at: datetime | None = None
 
 
-class PredictionHistoryItem(BaseModel):
+class PredictionHistoryItem(ModelFieldsBase):
     prediction_id: str
     created_at: datetime
     churn_probability: float

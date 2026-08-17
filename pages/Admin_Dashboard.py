@@ -2,72 +2,23 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from runtime_config import get_api_base_url_config, get_api_base_url_issue
+from backend_client import (
+    API_BASE_URL,
+    API_BASE_URL_ISSUE,
+    API_BASE_URL_SOURCE,
+    build_error_message,
+    call_with_wake,
+    get_json,
+    patch_json,
+)
 from ui_theme import apply_theme, render_page_header, render_sidebar_block, render_soft_panel
 
 
-API_BASE_URL, API_BASE_URL_SOURCE = get_api_base_url_config()
-API_BASE_URL_ISSUE = get_api_base_url_issue(API_BASE_URL)
-BACKEND_TIMEOUT_SECONDS = 75
 USER_HISTORY_LIMIT = 50
 ADMIN_SUMMARY_KEY = "admin_summary_cache"
 ADMIN_USERS_KEY = "admin_users_cache"
 ADMIN_HISTORY_KEY = "admin_history_cache"
 ADMIN_MESSAGE_KEY = "admin_feedback_message"
-
-
-@st.cache_resource
-def get_http_session():
-    session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
-    return session
-
-
-def build_error_message(error):
-    if API_BASE_URL_ISSUE:
-        return API_BASE_URL_ISSUE
-
-    default_message = (
-        f"Could not reach the backend at {API_BASE_URL}. "
-        "Make sure your public FastAPI URL is set in API_BASE_URL. "
-        "If you are using Render free tier, the first wake-up can take a little longer."
-    )
-    response = getattr(error, "response", None)
-    if response is None:
-        return default_message
-
-    try:
-        payload = response.json()
-    except ValueError:
-        return default_message
-
-    detail = payload.get("detail")
-    if detail:
-        return f"Backend error: {detail}"
-
-    return default_message
-
-
-def request_json(method, path, payload=None):
-    request_kwargs = {
-        "method": method,
-        "url": f"{API_BASE_URL}{path}",
-        "timeout": BACKEND_TIMEOUT_SECONDS,
-    }
-    if payload is not None:
-        request_kwargs["json"] = payload
-
-    response = get_http_session().request(**request_kwargs)
-    response.raise_for_status()
-    return response.json()
-
-
-def get_json(path):
-    return request_json("GET", path)
-
-
-def patch_json(path, payload):
-    return request_json("PATCH", path, payload=payload)
 
 
 def invalidate_admin_cache():
@@ -78,20 +29,24 @@ def invalidate_admin_cache():
 
 def get_admin_summary(force_refresh=False):
     if force_refresh or ADMIN_SUMMARY_KEY not in st.session_state:
-        st.session_state[ADMIN_SUMMARY_KEY] = get_json("/admin/summary")
+        st.session_state[ADMIN_SUMMARY_KEY] = call_with_wake(
+            lambda: get_json("/admin/summary")
+        )
     return st.session_state[ADMIN_SUMMARY_KEY]
 
 
 def get_admin_users(force_refresh=False):
     if force_refresh or ADMIN_USERS_KEY not in st.session_state:
-        st.session_state[ADMIN_USERS_KEY] = get_json("/admin/users")
+        st.session_state[ADMIN_USERS_KEY] = call_with_wake(lambda: get_json("/admin/users"))
     return st.session_state[ADMIN_USERS_KEY]
 
 
 def get_user_history(user_id, force_refresh=False):
     history_cache = st.session_state.setdefault(ADMIN_HISTORY_KEY, {})
     if force_refresh or user_id not in history_cache:
-        history_cache[user_id] = get_json(f"/users/{user_id}/predictions?limit={USER_HISTORY_LIMIT}")
+        history_cache[user_id] = call_with_wake(
+            lambda: get_json(f"/users/{user_id}/predictions?limit={USER_HISTORY_LIMIT}")
+        )
     return history_cache[user_id]
 
 
@@ -296,9 +251,11 @@ if prediction_items:
                 item for item in prediction_items if item["prediction_id"] == prediction_id
             )
             try:
-                updated_item = patch_json(
-                    f"/predictions/{prediction_id}/outcome",
-                    {"actual_outcome": actual_outcome},
+                updated_item = call_with_wake(
+                    lambda: patch_json(
+                        f"/predictions/{prediction_id}/outcome",
+                        {"actual_outcome": actual_outcome},
+                    )
                 )
             except requests.RequestException as error:
                 st.error(build_error_message(error))

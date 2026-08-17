@@ -1,0 +1,19 @@
+# Backend-only deps for the Render web service.
+#
+# Use this by setting the Render Build Command to:
+#   pip install -r requirements-backend.txt
+#
+# Versus the shared requirements.txt this additionally drops streamlit and its
+# transitive pyarrow/altair/tornado tree — roughly 200 MB of wheels the API
+# never imports. Smaller image = less to restore when Render cold-starts the
+# container, which is where the multi-minute wake-up actually goes.
+
+fastapi~=0.141
+uvicorn~=0.52
+sqlalchemy~=2.0
+
+# Pinned exactly to the version that wrote churn_model.pkl. See requirements.txt.
+scikit-learn==1.8.0
+numpy==2.3.4
+pandas==2.3.3
+joblib==1.5.2
