@@ -20,6 +20,22 @@ def create_db_engine(database_url):
     engine_kwargs = {}
     if normalized_url.startswith("sqlite"):
         engine_kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        # Serverless Postgres (Neon, Supabase) suspends compute after a few
+        # minutes of inactivity and drops open connections. Without pre-ping the
+        # pool hands out a connection the server has already closed and the
+        # request fails with OperationalError; pre-ping tests it first and
+        # transparently reconnects. This pairs with a spun-down free web
+        # instance, where idle gaps are the normal case rather than the
+        # exception.
+        engine_kwargs["pool_pre_ping"] = True
+        # Retire connections before the provider's idle-suspend window rather
+        # than discovering server-side that they are gone.
+        engine_kwargs["pool_recycle"] = 240
+        # A 512 MB instance needs no large pool, and free Postgres tiers cap
+        # concurrent connections.
+        engine_kwargs["pool_size"] = 5
+        engine_kwargs["max_overflow"] = 5
 
     return create_engine(normalized_url, **engine_kwargs)
 
