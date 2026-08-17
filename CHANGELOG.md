@@ -66,6 +66,13 @@ bloat, and a port-binding stall.
   engine.
 - Added `psycopg[binary]~=3.3` to the runtime dependency sets.
 - `scripts/migrate_sqlite_backup.py` moves existing SQLite rows into Postgres.
+- Fixed a data-safety hole in that script's same-location guard. It compared raw
+  URL strings, but the source engine is built from an absolute path while an
+  unset `DATABASE_URL` falls back to the relative default
+  `sqlite:///./churn_app.db`. Those strings differ while naming the same file,
+  so the guard passed and the script would migrate a database onto itself.
+  Identity now resolves SQLite paths before comparing, and the script refuses
+  outright when `DATABASE_URL` is unset.
 
 **Dependencies**
 

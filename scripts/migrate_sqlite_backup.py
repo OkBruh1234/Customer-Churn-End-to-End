@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 
@@ -9,6 +10,21 @@ from backend.models import PredictionLog, User
 
 
 SOURCE_SQLITE_PATH = Path("churn_app.db")
+
+
+def engine_identity(engine):
+    """Comparable identity for an engine, with SQLite paths resolved.
+
+    Comparing raw URL strings is not enough: the source engine is built from an
+    absolute path while an unset DATABASE_URL yields the relative default
+    `sqlite:///./churn_app.db`. Those strings differ while naming the same file,
+    which let the same-location guard pass and the script migrate a database
+    onto itself.
+    """
+    url = engine.url
+    if url.get_backend_name() == "sqlite" and url.database and url.database != ":memory:":
+        return f"sqlite:{Path(url.database).resolve()}"
+    return str(url)
 
 
 def parse_datetime(value):
@@ -57,12 +73,19 @@ def migrate_data():
             f"Source backup database was not found at {SOURCE_SQLITE_PATH.resolve()}"
         )
 
+    if not os.getenv("DATABASE_URL"):
+        raise ValueError(
+            "DATABASE_URL is not set, so the target would fall back to the same "
+            "local SQLite file this script reads from. Set DATABASE_URL to the "
+            "destination database before running the migration."
+        )
+
     source_engine = create_db_engine(f"sqlite:///{SOURCE_SQLITE_PATH.resolve().as_posix()}")
     from backend.database import DATABASE_URL
 
     target_engine = create_db_engine(DATABASE_URL)
 
-    if str(source_engine.url) == str(target_engine.url):
+    if engine_identity(source_engine) == engine_identity(target_engine):
         raise ValueError("Source and target databases point to the same location.")
 
     Base.metadata.create_all(bind=target_engine)
