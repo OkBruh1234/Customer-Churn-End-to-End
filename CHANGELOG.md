@@ -101,10 +101,14 @@ bloat, and a port-binding stall.
 
 - Added `.github/workflows/keep-alive.yml` pinging `/health` on a schedule, with
   the URL from a repository variable rather than hardcoded.
-- Scheduled ~20 h/day rather than 24/7: free instance time is capped at
-  **750 hours/month** and a month is ~730 h. Round-the-clock pinging consumes
-  essentially the whole allowance, and hitting the cap suspends the service —
-  worse than a cold start.
+- Runs every 10 minutes, 24/7, so the service is never cold for a visitor in any
+  timezone. The budget constraint this accepts: Render's free tier allows
+  **750 instance-hours per month per workspace** and a month is ~730 h, so this
+  consumes ~97% of the allowance. Workable for a single service, but it leaves
+  no room for a second free web service in the same workspace — adding one would
+  exceed the cap, and exceeding it suspends the service outright. Narrow the
+  cron back to `*/10 0-19 * * *` (~608 h/month) if another service is ever
+  needed.
 - Added `scripts/measure_cold_start.sh` to time a real deployment.
 
 ### Verified
